@@ -281,85 +281,6 @@ void DrawManager::Render(HWND hwnd)
 	UINT offsets = 0;
 	FLOAT color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-	VertexBuffer vertex;
-	std::vector<DWORD> indexList;
-	std::vector<Sprite>::iterator it;
-	for (it = m_SpriteList.begin(); it != m_SpriteList.end(); it++)
-	{
-		float x = rect.Width() * it->m_DrawX;
-		float y = rect.Height() * it->m_DrawY;
-		DWORD index = vertex.GetSize();
-
-		vertex.AddVertex({ {0.0f, 0.0f}, {x, y}, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
-		vertex.AddVertex({ {1.0f, 0.0f}, {x, y}, {1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
-		vertex.AddVertex({ {0.0f, 1.0f}, {x, y}, {0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
-		vertex.AddVertex({ {1.0f, 1.0f}, {x, y}, {1.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
-
-		indexList.push_back(index);
-		indexList.push_back(index + 1);
-		indexList.push_back(index + 2);
-		indexList.push_back(index + 1);
-		indexList.push_back(index + 3);
-		indexList.push_back(index + 2);
-	}
-
-	if (vertex.GetSize() > 0)
-	{
-		//////////////////////////////////////////////////////////////////////////////////
-		//頂点バッファの生成
-		//////////////////////////////////////////////////////////////////////////////////
-		D3D11_BUFFER_DESC bufferDesc;
-
-		ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
-		bufferDesc.ByteWidth = sizeof(Vertex) * vertex.GetVertexNum();	//バッファーのサイズ (バイト単位)
-		bufferDesc.Usage = D3D11_USAGE_DEFAULT;									//バッファーで想定されている読み込みおよび書き込みの方法
-		bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;						//バッファーをどのようにパイプラインにバインドするか
-		bufferDesc.CPUAccessFlags = 0;											//CPU アクセスのフラグ
-		bufferDesc.MiscFlags = 0;												//その他のフラグ
-		bufferDesc.StructureByteStride = 0;										//構造体が構造化バッファーを表す場合、その構造体のサイズ (バイト単位)
-
-		D3D11_SUBRESOURCE_DATA subresource;
-		ZeroMemory(&subresource, sizeof(D3D11_SUBRESOURCE_DATA));
-		subresource.pSysMem = vertex.GetVertexList();	//初期化データへのポインタ
-		subresource.SysMemPitch = 0;							//テクスチャーにある 1 本の線の先端から隣の線までの距離 (バイト単位) 
-		subresource.SysMemSlicePitch = 0;						//1 つの深度レベルの先端から隣の深度レベルまでの距離 (バイト単位)
-
-		HRESULT hresult = m_Device->CreateBuffer(
-			&bufferDesc,	//バッファーの記述へのポインタ
-			&subresource,	//初期化データへのポインタ
-			&m_VertexBuffer	//作成されるバッファーへのポインタ
-		);
-
-		if (FAILED(hresult))
-			return;
-		
-
-		//////////////////////////////////////////////////////////////////////////////////
-		//頂点インデックス
-		//////////////////////////////////////////////////////////////////////////////////
-		D3D11_BUFFER_DESC indexBufferDesc;
-		indexBufferDesc.ByteWidth = sizeof(DWORD) * indexList.size();
-		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		indexBufferDesc.CPUAccessFlags = 0;
-		indexBufferDesc.MiscFlags = 0;
-		indexBufferDesc.StructureByteStride = 0;
-
-		D3D11_SUBRESOURCE_DATA subData;
-		subData.pSysMem = indexList.data();
-		subData.SysMemPitch = 0;
-		subData.SysMemSlicePitch = 0;
-
-		hresult = m_Device->CreateBuffer(&indexBufferDesc, &subData, &m_IndexList);
-
-		if (FAILED(hresult))
-			return ;
-
-
-		m_Context->IASetVertexBuffers(0, 1, m_VertexBuffer.GetAddressOf(), &strides, &offsets);	//頂点バッファの設定
-		m_Context->IASetIndexBuffer(m_IndexList.Get(), DXGI_FORMAT_R32_UINT, 0);	//頂点バッファの設定
-	}
-
 	m_Context->ClearRenderTargetView(m_RenderTargetView.Get(), color);						//レンダーターゲットをクリアする
 	m_Context->IASetInputLayout(m_InputLayout.Get());										//インプットレイアウトの設定
 	m_Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);				//頂点バッファがどの順番で三角形を作るか
@@ -378,39 +299,119 @@ void DrawManager::Render(HWND hwnd)
 	constantBuffer.height = m_TextureImage->GetHeight();
 	constantBuffer.width = m_TextureImage->GetWidth();
 
-	//////////////////////////////////////////////////////////////////////////////////
-	//描画
-	//////////////////////////////////////////////////////////////////////////////////
 	m_Context->UpdateSubresource(m_ConstantBuffer.Get(), 0, nullptr, &constantBuffer, 0, 0);//定数バッファの更新
-	m_Context->DrawIndexed(indexList.size(), 0, 0);										//描画する
+
+
+	if (m_SpriteList.size() > 0) {
+		std::vector<Sprite>::iterator it;
+		for (it = m_SpriteList.begin(); it != m_SpriteList.end(); it++)
+		{
+			float x = rect.Width() * it->m_DrawX;
+			float y = rect.Height() * it->m_DrawY;
+			DWORD index = m_VertexListBuffer.GetSize();
+
+			m_VertexListBuffer.AddVertex({ {0.0f, 0.0f}, {x, y}, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
+			m_VertexListBuffer.AddVertex({ {1.0f, 0.0f}, {x, y}, {1.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
+			m_VertexListBuffer.AddVertex({ {0.0f, 1.0f}, {x, y}, {0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
+			m_VertexListBuffer.AddVertex({ {1.0f, 1.0f}, {x, y}, {1.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 0.0f} });
+
+			m_IndexListBuffer.push_back(index);
+			m_IndexListBuffer.push_back(index + 1);
+			m_IndexListBuffer.push_back(index + 2);
+			m_IndexListBuffer.push_back(index + 1);
+			m_IndexListBuffer.push_back(index + 3);
+			m_IndexListBuffer.push_back(index + 2);
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////
+		//頂点バッファの生成
+		//////////////////////////////////////////////////////////////////////////////////
+		D3D11_BUFFER_DESC bufferDesc;
+
+		ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+		bufferDesc.ByteWidth = sizeof(Vertex) * m_VertexListBuffer.GetVertexNum();	//バッファーのサイズ (バイト単位)
+		bufferDesc.Usage = D3D11_USAGE_DEFAULT;									//バッファーで想定されている読み込みおよび書き込みの方法
+		bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;						//バッファーをどのようにパイプラインにバインドするか
+		bufferDesc.CPUAccessFlags = 0;											//CPU アクセスのフラグ
+		bufferDesc.MiscFlags = 0;												//その他のフラグ
+		bufferDesc.StructureByteStride = 0;										//構造体が構造化バッファーを表す場合、その構造体のサイズ (バイト単位)
+
+		D3D11_SUBRESOURCE_DATA subresource;
+		ZeroMemory(&subresource, sizeof(D3D11_SUBRESOURCE_DATA));
+		subresource.pSysMem = m_VertexListBuffer.GetVertexList();	//初期化データへのポインタ
+		subresource.SysMemPitch = 0;							//テクスチャーにある 1 本の線の先端から隣の線までの距離 (バイト単位) 
+		subresource.SysMemSlicePitch = 0;						//1 つの深度レベルの先端から隣の深度レベルまでの距離 (バイト単位)
+
+		HRESULT hresult = m_Device->CreateBuffer(
+			&bufferDesc,	//バッファーの記述へのポインタ
+			&subresource,	//初期化データへのポインタ
+			&m_VertexBuffer	//作成されるバッファーへのポインタ
+		);
+
+		if (FAILED(hresult))
+			return;
+		
+
+		//////////////////////////////////////////////////////////////////////////////////
+		//頂点インデックス
+		//////////////////////////////////////////////////////////////////////////////////
+		D3D11_BUFFER_DESC indexBufferDesc;
+		indexBufferDesc.ByteWidth = sizeof(DWORD) * m_IndexListBuffer.size();
+		indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		indexBufferDesc.CPUAccessFlags = 0;
+		indexBufferDesc.MiscFlags = 0;
+		indexBufferDesc.StructureByteStride = 0;
+
+		D3D11_SUBRESOURCE_DATA subData;
+		subData.pSysMem = m_IndexListBuffer.data();
+		subData.SysMemPitch = 0;
+		subData.SysMemSlicePitch = 0;
+
+		hresult = m_Device->CreateBuffer(&indexBufferDesc, &subData, &m_IndexList);
+
+		if (FAILED(hresult))
+			return ;
+
+
+		m_Context->IASetVertexBuffers(0, 1, m_VertexBuffer.GetAddressOf(), &strides, &offsets);	//頂点バッファの設定
+		m_Context->IASetIndexBuffer(m_IndexList.Get(), DXGI_FORMAT_R32_UINT, 0);	//頂点バッファの設定
+		m_Context->DrawIndexed(m_IndexListBuffer.size(), 0, 0);										//描画する
+
+		m_VertexListBuffer.ClearVertex();
+		m_IndexListBuffer.clear();
+	}
+
 
 	// フレームレート計測
 	m_FrameRate.IncrFrame();
 
 	// デバッグメニュー表示
-	std::string title = "< DebugDisp >";
-	std::string strSpriteNum = "  SpriteNum : " + std::to_string(m_SpriteList.size());
-	std::string strFrameRate = "  FrameRate : " + std::to_string(m_FrameRate.GetFrameRate());
-	std::string strTotalNewCount = "  TotalAllocatedCount : " + std::to_string(totalAllocatedNum);
-	std::string strCurrentNewNum = "  CurrentAllocatedNum : " + std::to_string(currentAllocatedNum);
-	std::string strUsedMemorySize = "  TotalMemorySize : " + std::to_string(totalMemorySize);
-	std::string strPeakMemorySize = "  PeakMemorySize : " + std::to_string(peakMemorySize);
-	std::string strOneFrameTime = "  OneFrameTime [microsecond]: " + std::to_string(m_FrameRate.GetOneFrameTime());
-	std::string strMaxOneFrameTime = "  MaxOneFrameTime [microsecond]: " + std::to_string(m_FrameRate.GetMaxOneFrameTime());
-	std::string strPangram = "  Pangram: The quick brown fox jumps over the lazy dog.";
+	int strnum = 0;
+	int size = sizeof(m_DebugMenuString) / sizeof(*m_DebugMenuString);
+	strnum = sprintf_s(m_DebugMenuString, size, "< DebugDisp >");
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 20);
+	strnum = sprintf_s(m_DebugMenuString, size, "  SpriteNum : %zd", m_SpriteList.size() );
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 40);
+	strnum = sprintf_s(m_DebugMenuString, size, "  FrameRate : %lf", m_FrameRate.GetFrameRate());
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 60);
+	strnum = sprintf_s(m_DebugMenuString, size, "  TotalAllocatedCount : %d", totalAllocatedNum);
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 80);
+	strnum = sprintf_s(m_DebugMenuString, size, "  CurrentAllocatedNum : %d", currentAllocatedNum);
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 100);
+	strnum = sprintf_s(m_DebugMenuString, size, "  TotalMemorySize : %zd", totalMemorySize);
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 120);
+	strnum = sprintf_s(m_DebugMenuString, size, "  PeakMemorySize : %zd", peakMemorySize);
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 140);
+	strnum = sprintf_s(m_DebugMenuString, size, "  OneFrameTime [microsecond]: %lld", m_FrameRate.GetOneFrameTime());
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 160);
+	strnum = sprintf_s(m_DebugMenuString, size, "  MaxOneFrameTime [microsecond]: %lld", m_FrameRate.GetMaxOneFrameTime());
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 180);
+	strnum = sprintf_s(m_DebugMenuString, size, "  Pangram: The quick brown fox jumps over the lazy dog.");
+	m_DebugMenu.ExecDispString(hwnd, m_Context, m_DebugMenuString, strnum, 20, 200);
 
 	//引数で色指定できるとよい
 	//hwnd, m_Context隠蔽できるといい
-	m_DebugMenu.ExecDispString(hwnd, m_Context, title, 20, 20);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strSpriteNum, 20, 40);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strFrameRate, 20, 60);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strTotalNewCount, 20, 80);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strCurrentNewNum, 20, 100);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strUsedMemorySize, 20, 120);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strPeakMemorySize, 20, 140);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strOneFrameTime, 20, 160);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strMaxOneFrameTime, 20, 180);
-	m_DebugMenu.ExecDispString(hwnd, m_Context, strPangram, 20, 200);
 	m_DebugMenu.DrawString(m_Context);
 	m_Swapchain->Present(0, 0);
 }

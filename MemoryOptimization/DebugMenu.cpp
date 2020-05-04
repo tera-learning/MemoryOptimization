@@ -110,7 +110,7 @@ HRESULT DebugMenu::Create(const Microsoft::WRL::ComPtr<ID3D11Device>& device)
 	return hresult;
 }
 
-void DebugMenu::ExecDispString(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& dContext, const std::string& str, int x, int y) 
+void DebugMenu::ExecDispString(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& dContext, const char* str, int strnum, int x, int y) 
 {
 
 	//ウィンドウ中央座標を取得
@@ -121,7 +121,7 @@ void DebugMenu::ExecDispString(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11Dev
 
 	float blendFactor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-	for (unsigned int i = 0; i < str.size(); i++)
+	for (unsigned int i = 0; i < strnum; i++)
 	{
 
 		//文字表示位置を取得

@@ -22,6 +22,9 @@ private:
 	std::shared_ptr<Texture> m_TextureImage;
 	DebugMenu m_DebugMenu;
 	FrameRate m_FrameRate;
+	char m_DebugMenuString[1024];
+	VertexBuffer m_VertexListBuffer;
+	std::vector<DWORD> m_IndexListBuffer;
 
 public:
 	Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_Context;

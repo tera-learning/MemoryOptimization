@@ -20,6 +20,7 @@ private:
 	int m_CharacterTextureHorizontalNum = 16;
 	int m_CharacterTextureVerticalNum = 8;
 
+
 	Texture m_TextureImage;
 	VertexBuffer m_Vertex;
 	std::vector<DWORD> m_IndexList;
@@ -39,7 +40,7 @@ public:
 	/* virtual */ ~DebugMenu();
 
 	HRESULT Create(const Microsoft::WRL::ComPtr<ID3D11Device>& device);
-	void ExecDispString(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& dContext, const std::string& str, int x, int y) ;
+	void ExecDispString(HWND hwnd, const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& dContext, const char* str, int strnum,  int x, int y) ;
 	CRect GetRectCharacterTexture(int asciicode) const;
 	CPoint GetDispPointCharacterTexture(int x, int y, int charactorNo) const;
 	void DrawString(const Microsoft::WRL::ComPtr<ID3D11DeviceContext>& dContext);
